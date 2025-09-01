@@ -98,7 +98,7 @@ dmypy.json
 *.pickle
 
 # Model checkpoints and outputs
-checkpoints/
+#checkpoints/
 results/
 video_results/
 outputs/
