@@ -6,7 +6,7 @@ from typing import Tuple, List
 @dataclass
 class Config:
     # Data paths
-    data_root: str = "/mnt/c/Users/samuel/OneDrive/Documents/worms/zoomwormtracking/supervisely_download"
+    data_root: str = "../supervisely_download"
     img_dir: str = "images"
     mask_dir: str = "masks_png"
     

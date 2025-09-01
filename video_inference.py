@@ -167,33 +167,77 @@ def create_result_video(output_folder: str, fps: float, img_size: tuple):
         print("No mask files found to create video")
         return
     
-    # Create mask video
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    mask_writer = cv2.VideoWriter(
-        os.path.join(output_folder, 'masks_video.mp4'),
-        fourcc, fps, img_size, isColor=False
-    )
+    # Try multiple codecs for better compatibility
+    codecs_to_try = [
+        ('XVID', 'avi'),
+        ('MJPG', 'avi'), 
+        ('mp4v', 'mp4'),
+        ('X264', 'mp4')
+    ]
     
-    print("Creating mask video...")
-    for mask_file in tqdm(mask_files):
-        mask = cv2.imread(os.path.join(output_folder, mask_file), cv2.IMREAD_GRAYSCALE)
-        mask_writer.write(mask)
-    mask_writer.release()
+    # Create mask video
+    mask_created = False
+    for codec, ext in codecs_to_try:
+        try:
+            fourcc = cv2.VideoWriter_fourcc(*codec)
+            mask_writer = cv2.VideoWriter(
+                os.path.join(output_folder, f'masks_video.{ext}'),
+                fourcc, fps, img_size, isColor=False
+            )
+            
+            if mask_writer.isOpened():
+                print(f"Creating mask video with {codec} codec...")
+                for mask_file in tqdm(mask_files):
+                    mask = cv2.imread(os.path.join(output_folder, mask_file), cv2.IMREAD_GRAYSCALE)
+                    if mask is not None:
+                        # Ensure mask is the right size
+                        mask = cv2.resize(mask, img_size)
+                        mask_writer.write(mask)
+                mask_writer.release()
+                mask_created = True
+                print(f"✅ Mask video created: masks_video.{ext}")
+                break
+        except Exception as e:
+            print(f"Failed with {codec}: {e}")
+            continue
+    
+    if not mask_created:
+        print("❌ Failed to create mask video with any codec")
     
     # Create overlay video if overlays exist
     if overlay_files:
-        overlay_writer = cv2.VideoWriter(
-            os.path.join(output_folder, 'overlay_video.mp4'),
-            fourcc, fps, img_size, isColor=True
-        )
+        overlay_created = False
+        for codec, ext in codecs_to_try:
+            try:
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                overlay_writer = cv2.VideoWriter(
+                    os.path.join(output_folder, f'overlay_video.{ext}'),
+                    fourcc, fps, img_size, isColor=True
+                )
+                
+                if overlay_writer.isOpened():
+                    print(f"Creating overlay video with {codec} codec...")
+                    for overlay_file in tqdm(overlay_files):
+                        overlay = cv2.imread(os.path.join(output_folder, overlay_file))
+                        if overlay is not None:
+                            # Ensure overlay is the right size
+                            overlay = cv2.resize(overlay, img_size)
+                            overlay_writer.write(overlay)
+                    overlay_writer.release()
+                    overlay_created = True
+                    print(f"✅ Overlay video created: overlay_video.{ext}")
+                    break
+            except Exception as e:
+                print(f"Failed with {codec}: {e}")
+                continue
         
-        print("Creating overlay video...")
-        for overlay_file in tqdm(overlay_files):
-            overlay = cv2.imread(os.path.join(output_folder, overlay_file))
-            overlay_writer.write(overlay)
-        overlay_writer.release()
+        if not overlay_created:
+            print("❌ Failed to create overlay video with any codec")
     
-    print("Videos created successfully!")
+    if mask_created or overlay_created:
+        print("✅ Video creation completed!")
+    else:
+        print("❌ No videos could be created")
 
 
 def main():

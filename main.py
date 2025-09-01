@@ -24,7 +24,7 @@ def parse_args():
     
     # Data paths
     parser.add_argument('--data-root', type=str, 
-                       default="/mnt/c/Users/samuel/OneDrive/Documents/worms/zoomwormtracking/supervisely_download",
+                       default="../supervisely_download",
                        help='Root directory containing images and masks')
     parser.add_argument('--img-dir', type=str, default='images',
                        help='Image directory name')
