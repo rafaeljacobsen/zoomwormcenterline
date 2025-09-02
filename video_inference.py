@@ -137,21 +137,25 @@ def process_frame_batch(
     
     # Process outputs
     for i, (frame, frame_idx) in enumerate(zip(frames, frame_indices)):
-        # Get mask
+        # Get mask at inference size
         mask = inference.postprocess_mask(outputs[i:i+1], threshold=0.5)
+        
+        # Resize mask back to original frame size
+        orig_height, orig_width = frame.shape[:2]
+        mask_resized = cv2.resize(mask, (orig_width, orig_height), interpolation=cv2.INTER_NEAREST)
         
         # Apply post-processing
         if apply_postprocessing:
-            mask = inference.apply_morphological_operations(mask, 'both')
-            mask = inference.filter_by_area(mask, min_area=100)
+            mask_resized = inference.apply_morphological_operations(mask_resized, 'both')
+            mask_resized = inference.filter_by_area(mask_resized, min_area=100)
         
         # Save mask
         mask_path = os.path.join(output_folder, f"frame_{frame_idx:06d}_mask.png")
-        cv2.imwrite(mask_path, mask)
+        cv2.imwrite(mask_path, mask_resized)
         
         # Save overlay if requested
         if save_overlays:
-            overlay = inference.create_contour_overlay(frame, mask)
+            overlay = inference.create_contour_overlay(frame, mask_resized)
             overlay_path = os.path.join(output_folder, f"frame_{frame_idx:06d}_overlay.png")
             cv2.imwrite(overlay_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
 
