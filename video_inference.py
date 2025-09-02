@@ -148,6 +148,13 @@ def process_frame_batch(
         if apply_postprocessing:
             mask_resized = inference.apply_morphological_operations(mask_resized, 'both')
             mask_resized = inference.filter_by_area(mask_resized, min_area=100)
+            
+            # Keep only largest connected component
+            num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask_resized, connectivity=8)
+            if num_labels > 2:  # Background + components
+                # Find largest component (excluding background)
+                largest_idx = np.argmax(stats[1:, cv2.CC_STAT_AREA]) + 1
+                mask_resized = (labels == largest_idx).astype(np.uint8) * 255
         
         # Save mask
         mask_path = os.path.join(output_folder, f"frame_{frame_idx:06d}_mask.png")
