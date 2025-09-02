@@ -118,6 +118,41 @@ def detect_thick_frames(frame_data, stats, thickness_threshold=2.0):
     return thick_frames, threshold_value
 
 
+def export_curled_frames(input_folder, thick_frames):
+    """Export curled worm frames to a separate folder"""
+    
+    if not thick_frames:
+        print("No thick frames to export")
+        return
+    
+    # Create output folder
+    output_folder = os.path.join(input_folder, "curled_worms")
+    os.makedirs(output_folder, exist_ok=True)
+    
+    print(f"Exporting {len(thick_frames)} frames to {output_folder}...")
+    
+    for frame_num, thickness, mask_file in tqdm(thick_frames, desc="Copying frames"):
+        # Copy mask file
+        mask_src = os.path.join(input_folder, mask_file)
+        mask_dst = os.path.join(output_folder, mask_file)
+        
+        # Copy overlay file
+        overlay_file = mask_file.replace('_mask.png', '_overlay.png')
+        overlay_src = os.path.join(input_folder, overlay_file)
+        overlay_dst = os.path.join(output_folder, overlay_file)
+        
+        # Copy files if they exist
+        if os.path.exists(mask_src):
+            import shutil
+            shutil.copy2(mask_src, mask_dst)
+        
+        if os.path.exists(overlay_src):
+            import shutil
+            shutil.copy2(overlay_src, overlay_dst)
+    
+    print(f"✅ Exported {len(thick_frames)} frame pairs to {output_folder}")
+
+
 def create_curled_worm_video(input_folder, thick_frames, output_name="curled_worms"):
     """Create video of frames with curled worms"""
     
@@ -240,6 +275,9 @@ def main():
     
     # Detect thick frames
     thick_frames, threshold_value = detect_thick_frames(frame_data, stats, args.thickness_threshold)
+    
+    # Export curled frames to folder
+    export_curled_frames(args.input, thick_frames)
     
     # Create video of curled worms
     create_curled_worm_video(args.input, thick_frames)
