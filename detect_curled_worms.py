@@ -118,8 +118,8 @@ def detect_thick_frames(frame_data, stats, thickness_threshold=2.0):
     return thick_frames, threshold_value
 
 
-def export_curled_frames(input_folder, thick_frames):
-    """Export curled worm frames to a separate folder"""
+def export_curled_frames(input_folder, thick_frames, video_path):
+    """Export original frames of curled worms to a separate folder"""
     
     if not thick_frames:
         print("No thick frames to export")
@@ -129,28 +129,29 @@ def export_curled_frames(input_folder, thick_frames):
     output_folder = os.path.join(input_folder, "curled_worms")
     os.makedirs(output_folder, exist_ok=True)
     
-    print(f"Exporting {len(thick_frames)} frames to {output_folder}...")
+    print(f"Exporting {len(thick_frames)} original frames to {output_folder}...")
     
-    for frame_num, thickness, mask_file in tqdm(thick_frames, desc="Copying frames"):
-        # Copy mask file
-        mask_src = os.path.join(input_folder, mask_file)
-        mask_dst = os.path.join(output_folder, mask_file)
-        
-        # Copy overlay file
-        overlay_file = mask_file.replace('_mask.png', '_overlay.png')
-        overlay_src = os.path.join(input_folder, overlay_file)
-        overlay_dst = os.path.join(output_folder, overlay_file)
-        
-        # Copy files if they exist
-        if os.path.exists(mask_src):
-            import shutil
-            shutil.copy2(mask_src, mask_dst)
-        
-        if os.path.exists(overlay_src):
-            import shutil
-            shutil.copy2(overlay_src, overlay_dst)
+    # Open video to extract original frames
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"❌ Could not open video: {video_path}")
+        return
     
-    print(f"✅ Exported {len(thick_frames)} frame pairs to {output_folder}")
+    import shutil
+    
+    for frame_num, thickness, mask_file in tqdm(thick_frames, desc="Extracting frames"):
+        # Set video position to the frame
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+        ret, frame = cap.read()
+        
+        if ret:
+            # Save original frame
+            frame_filename = f"frame_{frame_num:06d}_original.png"
+            frame_path = os.path.join(output_folder, frame_filename)
+            cv2.imwrite(frame_path, frame)
+    
+    cap.release()
+    print(f"✅ Exported {len(thick_frames)} original frames to {output_folder}")
 
 
 def create_curled_worm_video(input_folder, thick_frames, output_name="curled_worms"):
@@ -256,6 +257,8 @@ def main():
     parser = argparse.ArgumentParser(description='Detect curled worms by thickness analysis')
     parser.add_argument('--input', type=str, default='video_results', 
                        help='Input folder with mask and overlay files')
+    parser.add_argument('--video', type=str, required=True,
+                       help='Path to original video file')
     parser.add_argument('--thickness_threshold', type=float, default=2.0,
                        help='Standard deviations above mean for thick detection')
     parser.add_argument('--plot', action='store_true',
@@ -277,7 +280,7 @@ def main():
     thick_frames, threshold_value = detect_thick_frames(frame_data, stats, args.thickness_threshold)
     
     # Export curled frames to folder
-    export_curled_frames(args.input, thick_frames)
+    export_curled_frames(args.input, thick_frames, args.video)
     
     # Create video of curled worms
     create_curled_worm_video(args.input, thick_frames)
